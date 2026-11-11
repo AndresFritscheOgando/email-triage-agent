@@ -13,6 +13,7 @@ dependencies = [
     "langchain-ollama>=1.1.0",
     "langgraph>=1.2.20",
     "pydantic>=2.14.3",
+    "python-dotenv>=1.2.4",
 ]
 
 [project.scripts]

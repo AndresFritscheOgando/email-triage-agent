@@ -1,5 +1,17 @@
 import argparse
 
+from pathlib import Path
+
+from dotenv import find_dotenv, load_dotenv
+
+# Load .env (LangSmith keys, model overrides) before anything reads the
+# environment. Runs on any import of the package, so `python -m
+# email_triage_agent.triage` picks it up too. Real env vars take precedence.
+# Try the project root (src/email_triage_agent/ -> ../../.env) so it works
+# from any directory, then fall back to searching up from the cwd.
+_PROJECT_ENV = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(_PROJECT_ENV) or load_dotenv(find_dotenv(usecwd=True))
+
 
 def run(index: int) -> None:
     """Run the full agent on one example email and print what it did."""
