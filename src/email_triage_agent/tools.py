@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Literal
 from datetime import datetime
 
-@tool(description="Tool for writing emails")
+@tool
 def write_email(to: str, subject: str, content: str) -> str:
     """Write and send an email."""
     # Placeholder response = in real app would send email
