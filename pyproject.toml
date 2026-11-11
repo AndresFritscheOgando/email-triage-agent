@@ -1,0 +1,23 @@
+[project]
+name = "email-triage-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Andres Fritsche Ogando", email = "andresf00909@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "langchain>=1.5.0",
+    "langchain-core>=1.8.0",
+    "langchain-ollama>=1.1.0",
+    "langgraph>=1.2.20",
+    "pydantic>=2.14.3",
+]
+
+[project.scripts]
+email-triage-agent = "email_triage_agent:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
