@@ -1,45 +1,47 @@
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, SystemMessage
-from email_triage_agent.examples import TRIAGE_EXAMPLES
-from email_triage_agent.prompts import TRIAGE_USER_PROMPT, build_triage_system_prompt
-from email_triage_agent.schemas import RouterSchema
+"""The email agent: triage first, then reply only if the email needs it.
 
-llm = init_chat_model(model="qwen2.5:3b", model_provider="ollama", temperature=0.0)
-llm_router = llm.with_structured_output(RouterSchema)
+    START -> triage_router --respond--------> response_agent -> END
+                          \\--ignore/notify--> END
+"""
 
-system_prompt = build_triage_system_prompt()
+from typing import Literal
 
+from langchain_core.messages import HumanMessage
+from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command
 
-def classify(email: dict) -> RouterSchema:
-    messages = [
-        SystemMessage(system_prompt),
-        HumanMessage(TRIAGE_USER_PROMPT.format(**email)),
-    ]
-    return llm_router.invoke(messages)
+from email_triage_agent.response_agent import response_agent
+from email_triage_agent.state import State
+from email_triage_agent.triage import classify
+from email_triage_agent.utils import format_email
 
 
-def main() -> None:
-    correct = 0
-    for i, email in enumerate(TRIAGE_EXAMPLES, start=1):
-        expected = email["expected"]
-        try:
-            response = classify(email)
-            got = response.classification
-            reasoning = response.reasoning
-        except Exception as exc:  # small models sometimes return malformed output
-            got, reasoning = "ERROR", repr(exc)
+def triage_router(state: State) -> Command[Literal["response_agent", "__end__"]]:
+    """Classify the email and route it.
 
-        ok = got == expected
-        correct += ok
-        mark = "PASS" if ok else "FAIL"
-        print(f"[{mark}] {i}. {email['subject']}")
-        print(f"       expected={expected}  got={got}")
-        if not ok:
-            print(f"       reasoning: {reasoning}")
+    "respond" hands the email to the response agent; "ignore" and "notify"
+    end the run (notify is where a real app would alert the user).
+    """
+    email = state["email_input"]
+    try:
+        classification = classify(email).classification
+    except Exception:
+        # The small model sometimes returns malformed output. Surface the
+        # email to the user rather than dropping it or auto-replying.
+        classification = "notify"
 
-    total = len(TRIAGE_EXAMPLES)
-    print(f"\n{correct}/{total} correct ({correct / total:.0%})")
+    update: dict = {"classification_decision": classification}
+    if classification == "respond":
+        update["messages"] = [
+            HumanMessage(f"Respond to this email:\n\n{format_email(email)}")
+        ]
+        return Command(goto="response_agent", update=update)
+    return Command(goto=END, update=update)
 
 
-if __name__ == "__main__":
-    main()
+builder = StateGraph(State)
+builder.add_node("triage_router", triage_router)
+builder.add_node("response_agent", response_agent)
+builder.add_edge(START, "triage_router")
+
+graph = builder.compile()
