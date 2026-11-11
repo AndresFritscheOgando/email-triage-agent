@@ -1,6 +1,6 @@
 """Prompts for the email triage agent."""
 
-from datetime import date
+from datetime import date, timedelta
 
 # Who the assistant works for. Edit to match the real user.
 DEFAULT_BACKGROUND = """\
@@ -117,9 +117,9 @@ then finish.
 <tools>
 - check_calendar_availability(day): see my free slots on a day.
 - schedule_meeting(attendees, subject, duration_minutes, preferred_day, start_time):
-  book a meeting. attendees is a list of email addresses. preferred_day is an
-  ISO date like "2026-11-13". start_time is the 24-hour time as a number,
-  e.g. 1400 for 2:00 PM.
+  book a meeting. attendees is a list of email addresses and must include the
+  sender. preferred_day is an ISO date like "2026-11-13" (use the calendar
+  below). start_time is the 24-hour time as a number, e.g. 1400 for 2:00 PM.
 - write_email(to, subject, content): send a reply.
 - Done(done): call with done=true once the reply has been sent.
 </tools>
@@ -146,7 +146,10 @@ then finish.
 {calendar_preferences}
 </calendar_preferences>
 
-Today is {today}."""
+<calendar>
+Today is {today}. The next 7 days:
+{upcoming_days}
+</calendar>"""
 
 
 def build_agent_system_prompt(
@@ -155,10 +158,16 @@ def build_agent_system_prompt(
     calendar_preferences: str = DEFAULT_CALENDAR_PREFERENCES,
     today: date | None = None,
 ) -> str:
+    # Small models are bad at date arithmetic, so spell out the next week.
     today = today or date.today()
+    upcoming_days = "\n".join(
+        f"- {d:%A} = {d:%Y-%m-%d}"
+        for d in (today + timedelta(days=i) for i in range(1, 8))
+    )
     return AGENT_SYSTEM_PROMPT.format(
         background=background,
         response_preferences=response_preferences,
         calendar_preferences=calendar_preferences,
-        today=today.strftime("%A, %Y-%m-%d"),
+        today=f"{today:%A, %Y-%m-%d}",
+        upcoming_days=upcoming_days,
     )

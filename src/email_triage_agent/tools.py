@@ -28,3 +28,7 @@ def check_calendar_availability(day: str) -> str:
 class Done(BaseModel):
       """E-mail has been sent."""
       done: bool
+
+
+TOOLS = [write_email, schedule_meeting, check_calendar_availability, Done]
+TOOLS_BY_NAME = {t.name: t for t in TOOLS}
