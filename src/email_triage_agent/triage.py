@@ -25,7 +25,8 @@ def classify(email: EmailData) -> RouterSchema:
     return llm_router.invoke(messages)
 
 
-def main() -> None:
+def evaluate() -> None:
+    """Score the router against the labelled examples."""
     correct = 0
     for i, email in enumerate(TRIAGE_EXAMPLES, start=1):
         expected = email["expected"]
@@ -49,4 +50,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    evaluate()
