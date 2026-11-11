@@ -33,7 +33,7 @@ RESPOND - emails that need a reply from me:
 - Bug reports or issues assigned to me"""
 
 TRIAGE_SYSTEM_PROMPT = """\
-# You are an email triage assistant. Your only job is to read one email and
+You are an email triage assistant. Your only job is to read one email and
 decide which of three categories it belongs to: "ignore", "notify", or "respond".
 You do not write replies or take any other action.
 
