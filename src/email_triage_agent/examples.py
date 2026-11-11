@@ -1,13 +1,11 @@
 """Labelled emails for checking the triage router by hand."""
 
-from typing import Literal, TypedDict
+from typing import Literal
+
+from email_triage_agent.state import EmailData
 
 
-class LabelledEmail(TypedDict):
-    author: str
-    to: str
-    subject: str
-    email_thread: str
+class LabelledEmail(EmailData):
     expected: Literal["ignore", "notify", "respond"]
 
 
