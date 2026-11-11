@@ -1,24 +1,47 @@
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, SystemMessage
-from email_triage_agent.prompts import TRIAGE_USER_PROMPT, build_triage_system_prompt
-from email_triage_agent.schemas import RouterSchema
+"""The email agent: triage first, then reply only if the email needs it.
 
-llm = init_chat_model(model="qwen2.5:3b", model_provider="ollama", temperature=0.0)
-llm_router = llm.with_structured_output(RouterSchema)
+    START -> triage_router --respond--------> response_agent -> END
+                          \\--ignore/notify--> END
+"""
 
-email = {
-    "author": "Alice Smith <alice@company.com>",
-    "to": "me@company.com",
-    "subject": "Quick question about the API docs",
-    "email_thread": "Hi, I noticed the /auth endpoint isn't documented. "
-    "Was that intentional, or should we add it before the release? Thanks, Alice",
-}
+from typing import Literal
 
-messages = [
-    SystemMessage(build_triage_system_prompt()),
-    HumanMessage(TRIAGE_USER_PROMPT.format(**email)),
-]
+from langchain_core.messages import HumanMessage
+from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command
 
-response = llm_router.invoke(messages)
-print(response.classification)
-print(response.reasoning)
+from email_triage_agent.response_agent import response_agent
+from email_triage_agent.state import State
+from email_triage_agent.triage import classify
+from email_triage_agent.utils import format_email
+
+
+def triage_router(state: State) -> Command[Literal["response_agent", "__end__"]]:
+    """Classify the email and route it.
+
+    "respond" hands the email to the response agent; "ignore" and "notify"
+    end the run (notify is where a real app would alert the user).
+    """
+    email = state["email_input"]
+    try:
+        classification = classify(email).classification
+    except Exception:
+        # The small model sometimes returns malformed output. Surface the
+        # email to the user rather than dropping it or auto-replying.
+        classification = "notify"
+
+    update: dict = {"classification_decision": classification}
+    if classification == "respond":
+        update["messages"] = [
+            HumanMessage(f"Respond to this email:\n\n{format_email(email)}")
+        ]
+        return Command(goto="response_agent", update=update)
+    return Command(goto=END, update=update)
+
+
+builder = StateGraph(State)
+builder.add_node("triage_router", triage_router)
+builder.add_node("response_agent", response_agent)
+builder.add_edge(START, "triage_router")
+
+graph = builder.compile()

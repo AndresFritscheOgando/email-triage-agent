@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Literal
 from datetime import datetime
 
-@tool(description="Tool for writing emails")
+@tool
 def write_email(to: str, subject: str, content: str) -> str:
     """Write and send an email."""
     # Placeholder response = in real app would send email
@@ -28,3 +28,7 @@ def check_calendar_availability(day: str) -> str:
 class Done(BaseModel):
       """E-mail has been sent."""
       done: bool
+
+
+TOOLS = [write_email, schedule_meeting, check_calendar_availability, Done]
+TOOLS_BY_NAME = {t.name: t for t in TOOLS}
