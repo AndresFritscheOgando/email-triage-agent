@@ -17,7 +17,7 @@ from email_triage_agent.tools import TOOLS, TOOLS_BY_NAME
 
 # Tool calling needs a stronger model than triage. Override with e.g.
 # AGENT_MODEL=qwen2.5:7b once it's pulled in Ollama.
-AGENT_MODEL = os.getenv("AGENT_MODEL", "qwen2.5:3b")
+AGENT_MODEL = os.getenv("AGENT_MODEL", "qwen2.5:7b")
 
 llm = init_chat_model(model=AGENT_MODEL, model_provider="ollama", temperature=0.0)
 # Ollama ignores tool_choice, so the prompt also tells the model to always
